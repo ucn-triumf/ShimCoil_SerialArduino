@@ -144,7 +144,7 @@ void loop() {
       Serial.println(" V");
 
       digitalWrite(chipSelect, LOW);
-      SPI.transfer16(0x0030 | (channel&0xF)); // & channel with 0xF so that only 0-15 can appear -- prevents erroneous commands being sent.
+      SPI.transfer16(0x0030|(channel&0xF)); // & channel with 0xF so that only 0-15 can appear -- prevents erroneous commands being sent.
       SPI.transfer16(dac_value(floatFromPC));
       digitalWrite(chipSelect, HIGH);
     }
