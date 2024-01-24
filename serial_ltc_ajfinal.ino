@@ -147,6 +147,20 @@ void loop() {
       SPI.transfer16(0x0030|(channel&0xF)); // & channel with 0xF so that only 0-15 can appear -- prevents erroneous commands being sent.
       SPI.transfer16(dac_value(floatFromPC));
       digitalWrite(chipSelect, HIGH);
+    } else if (!strncmp(messageFromPC,"ZERO",4)) {
+      Serial.println("Zeroing all channels");
+      for (int i=0;i<numdacs;i++) {
+	for (int c=0;c<numadc_per_dac;c++) {	  
+	  Serial.print("Zeroing CSbar ");
+	  Serial.print(dacs[i]);
+	  Serial.print(" channel ");
+	  Serial.println(c);
+	  digitalWrite(dacs[i],LOW);
+	  SPI.transfer16(0x0030|(c & 0xF));
+	  SPI.transfer16(dac_value(0.));
+	  digitalWrite(chipSelect, HIGH);
+	}
+      }
     }
 
     newData = false;
@@ -207,7 +221,7 @@ void parseData() {
       Serial.println(floatFromPC);
       voltages[i]=floatFromPC;
     }
-  } else if (!strncmp(messageFromPC,"SET",3)) { // this is a comment
+  } else if (!strncmp(messageFromPC,"SET",3)) {
     strtokIndx = strtok(NULL, delimiter);
     chipSelectFromPC = atoi(strtokIndx);
     strtokIndx = strtok(NULL, delimiter);
