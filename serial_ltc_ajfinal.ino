@@ -13,7 +13,7 @@ const int numadc_per_dac=16;
 uint8_t chipSelect;
 uint8_t channel;
 
-const byte numChars = 400;
+const byte numChars = 128;
 char receivedChars[numChars];
 char tempChars[numChars];
 char messageFromPC[numChars] = {0};
@@ -96,7 +96,7 @@ void loop() {
     // showParsedData();
 
    
-if (!strncmp(messageFromPC, "SET", 3)) {
+    if (!strncmp(messageFromPC, "SET", 3)) {
       chipSelect = chipSelectFromPC;
       channel = channelFromPC;
 
@@ -112,7 +112,7 @@ if (!strncmp(messageFromPC, "SET", 3)) {
       SPI.transfer16(0x0030|(channel&0xF)); // & channel with 0xF so that only 0-15 can appear -- prevents erroneous commands being sent.
       SPI.transfer16(dac_value(floatFromPC));
       digitalWrite(chipSelect, HIGH);
-  } else if (!strncmp(messageFromPC, "MUX", 3)) {
+    } else if (!strncmp(messageFromPC, "MUX", 3)) {
       Serial.println("Changing MUX");
       chipSelect = chipSelectFromPC;
       channel = channelFromPC;
@@ -125,16 +125,16 @@ if (!strncmp(messageFromPC, "SET", 3)) {
     } else if (!strncmp(messageFromPC,"ZERO",4)) {
       Serial.println("Zeroing all channels");
       for (int i=0;i<numdacs;i++) {
-  for (int c=0;c<numadc_per_dac;c++) {    
-    Serial.print("Zeroing CSbar ");
-    Serial.print(dacs[i]);
-    Serial.print(" channel ");
-    Serial.println(c);
-    digitalWrite(dacs[i],LOW);
-    SPI.transfer16(0x0030|(c & 0xF));
-    SPI.transfer16(dac_value(0.));
-    digitalWrite(chipSelect, HIGH);
-  }
+        for (int c=0;c<numadc_per_dac;c++) {    
+          Serial.print("Zeroing CSbar ");
+          Serial.print(dacs[i]);
+          Serial.print(" channel ");
+          Serial.println(c);
+          digitalWrite(dacs[i],LOW);
+          SPI.transfer16(0x0030|(c & 0xF));
+          SPI.transfer16(dac_value(0.));
+          digitalWrite(chipSelect, HIGH);
+        }
       }
     }
 
@@ -183,20 +183,7 @@ void parseData() {
 
   goodtransfer=true;
 
-  if (!strncmp(messageFromPC,"SET_ALL",7)) {
-    Serial.println("Parsing voltages");
-    for (int i=0;i<numchan;i++) {
-      strtokIndx = strtok(NULL, delimiter);
-      if(strtokIndx==NULL) {
-        Serial.println("Error: not enough channels!!!");
-        goodtransfer=false;
-      }
-      floatFromPC = atof(strtokIndx);
-      Serial.print("Float ");
-      Serial.println(floatFromPC);
-      voltages[i]=floatFromPC;
-    }
-  } else if (!strncmp(messageFromPC,"SET",3)) {
+  if (!strncmp(messageFromPC,"SET",3)) {
     strtokIndx = strtok(NULL, delimiter);
     chipSelectFromPC = atoi(strtokIndx);
     strtokIndx = strtok(NULL, delimiter);
