@@ -96,7 +96,12 @@ void loop() {
     parseData();
     // showParsedData();
 
+<<<<<<< HEAD
     if (!strncmp(messageFromPC, "SET", 3)) {
+=======
+   
+if (!strncmp(messageFromPC, "SET", 3)) {
+>>>>>>> c9ba798e6dbc92a17000ec637bbe0da19e74bfc2
       chipSelect = chipSelectFromPC;
       channel = channelFromPC;
 
@@ -112,7 +117,11 @@ void loop() {
       SPI.transfer16(0x0030|(channel&0xF)); // & channel with 0xF so that only 0-15 can appear -- prevents erroneous commands being sent.
       SPI.transfer16(dac_value(floatFromPC));
       digitalWrite(chipSelect, HIGH);
+<<<<<<< HEAD
       } else if (!strncmp(messageFromPC, "MUX", 3)) {
+=======
+	} else if (!strncmp(messageFromPC, "MUX", 3)) {
+>>>>>>> c9ba798e6dbc92a17000ec637bbe0da19e74bfc2
       Serial.println("Changing MUX");
       chipSelect = chipSelectFromPC;
       channel = channelFromPC;
@@ -121,6 +130,7 @@ void loop() {
       SPI.transfer16(0x00b0);
       SPI.transfer16(0x0010 | channel);
       digitalWrite(chipSelect, HIGH);
+<<<<<<< HEAD
         
     } else if (!strncmp(messageFromPC,"ZERO",4)) {
       Serial.println("Zeroing all channels");
@@ -135,6 +145,22 @@ void loop() {
           SPI.transfer16(dac_value(0.));
           digitalWrite(chipSelect, HIGH);
         }
+=======
+
+    } else if (!strncmp(messageFromPC,"ZERO",4)) {
+      Serial.println("Zeroing all channels");
+      for (int i=0;i<numdacs;i++) {
+	for (int c=0;c<numadc_per_dac;c++) {	  
+	  Serial.print("Zeroing CSbar ");
+	  Serial.print(dacs[i]);
+	  Serial.print(" channel ");
+	  Serial.println(c);
+	  digitalWrite(dacs[i],LOW);
+	  SPI.transfer16(0x0030|(c & 0xF));
+	  SPI.transfer16(dac_value(0.));
+	  digitalWrite(chipSelect, HIGH);
+	}
+>>>>>>> c9ba798e6dbc92a17000ec637bbe0da19e74bfc2
       }
     }
 
