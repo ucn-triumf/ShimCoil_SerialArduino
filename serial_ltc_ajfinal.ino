@@ -13,7 +13,7 @@ const int numadc_per_dac=16;
 uint8_t chipSelect;
 uint8_t channel;
 
-const byte numChars = 400;
+const byte numChars = 128;
 char receivedChars[numChars];
 char tempChars[numChars];
 char messageFromPC[numChars] = {0};
@@ -89,49 +89,14 @@ void reset_voltages () {
 
 void loop() {
   int voltage_index;
-  recvWithStartEndMarkers();
+ 
+    recvWithStartEndMarkers();
   if (newData == true) {
     strcpy(tempChars, receivedChars);
     parseData();
     // showParsedData();
 
-    if (!strncmp(messageFromPC, "SET_ALL", 7)) {
-      Serial.println("Setting All");
-
-      if(goodtransfer) {
-
-        for (int j=0;j<numdacs;j++) {
-
-          for (int i=0;i<numadc_per_dac;i++) {
-
-            voltage_index=j*numadc_per_dac+i;
-            chipSelect=dacs[j];
-            floatFromPC=voltages[voltage_index];
-
-            Serial.print("Setting DAC ");
-            Serial.print(chipSelect);
-            Serial.print(" channel ");
-            Serial.print(i);
-            Serial.print(" to ");
-            Serial.print(floatFromPC);
-            Serial.print(" (voltage_index=");
-            Serial.print(voltage_index);
-            Serial.println(")");
-
-            digitalWrite(chipSelect,LOW);
-            SPI.transfer16(0x0030 | i);
-            SPI.transfer16(dac_value(floatFromPC));
-            digitalWrite(chipSelect, HIGH);
-            delay(10);
-          }
-        }
-      } else {
-        Serial.println("Sorry, you did not send enough voltages.");
-      }
-      reset_voltages();
-
-
-    } else if (!strncmp(messageFromPC, "SET", 3)) {
+    if (!strncmp(messageFromPC, "SET", 3)) {
       chipSelect = chipSelectFromPC;
       channel = channelFromPC;
 
@@ -147,6 +112,30 @@ void loop() {
       SPI.transfer16(0x0030|(channel&0xF)); // & channel with 0xF so that only 0-15 can appear -- prevents erroneous commands being sent.
       SPI.transfer16(dac_value(floatFromPC));
       digitalWrite(chipSelect, HIGH);
+      } else if (!strncmp(messageFromPC, "MUX", 3)) {
+      Serial.println("Changing MUX");
+      chipSelect = chipSelectFromPC;
+      channel = channelFromPC;
+
+      digitalWrite(chipSelect, LOW);
+      SPI.transfer16(0x00b0);
+      SPI.transfer16(0x0010 | channel);
+      digitalWrite(chipSelect, HIGH);
+        
+    } else if (!strncmp(messageFromPC,"ZERO",4)) {
+      Serial.println("Zeroing all channels");
+      for (int i=0;i<numdacs;i++) {
+        for (int c=0;c<numadc_per_dac;c++) {    
+          Serial.print("Zeroing CSbar ");
+          Serial.print(dacs[i]);
+          Serial.print(" channel ");
+          Serial.println(c);
+          digitalWrite(dacs[i],LOW);
+          SPI.transfer16(0x0030|(c & 0xF));
+          SPI.transfer16(dac_value(0.));
+          digitalWrite(chipSelect, HIGH);
+        }
+      }
     }
 
     newData = false;
@@ -207,7 +196,7 @@ void parseData() {
       Serial.println(floatFromPC);
       voltages[i]=floatFromPC;
     }
-  } else if (!strncmp(messageFromPC,"SET",3)) { // this is a comment
+  } else if (!strncmp(messageFromPC,"SET",3)) {
     strtokIndx = strtok(NULL, delimiter);
     chipSelectFromPC = atoi(strtokIndx);
     strtokIndx = strtok(NULL, delimiter);
