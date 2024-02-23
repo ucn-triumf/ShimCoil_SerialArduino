@@ -92,8 +92,24 @@ void loop() {
   recvWithStartEndMarkers();
   if (newData == true) {
     strcpy(tempChars, receivedChars);
+
+    // The routine parseData() interprets a command
+    // and sets any relevant variables we would need
+    // in order to complete the command
+    
     parseData();
     // showParsedData();
+
+
+    // Once parseData() has been completed, the relevant
+    // variables needed to complete the command are now
+    // set.  So, we just need to translate them into the
+    // appropriate commands for the Arduino and DAC chip, and
+    // then issue those commands.
+
+    // Summary:
+    // - parseData() gets the relevant data that is needed
+    // - loop() actually issues the commands to the arduino/DAC chip
 
    
     if (!strncmp(messageFromPC, "SET", 3)) {
@@ -190,6 +206,11 @@ void parseData() {
     channelFromPC = atoi(strtokIndx);
     strtokIndx = strtok(NULL, delimiter);
     floatFromPC = atof(strtokIndx);
+  } else if (!strncmp(messageFromPC, "MUX", 3)) {
+    strtokIndx = strtok(NULL, delimiter);
+    chipSelectFromPC = atoi(strtokIndx);
+    strtokIndx = strtok(NULL, delimiter);
+    channelFromPC = atoi(strtokIndx);
   }
 }
 
