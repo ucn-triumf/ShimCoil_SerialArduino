@@ -152,6 +152,7 @@ void loop() {
           digitalWrite(chipSelect, HIGH);
         }
       }
+      Serial.println("Done zeroing.");
     }
 
     newData = false;
