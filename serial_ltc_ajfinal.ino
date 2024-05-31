@@ -1,14 +1,10 @@
 #include "SPI.h"
 
-int dac1 = 10;
-int dac2 = 9;
-int dac3 = 8;
-int dac4 = 7;
-
 const int numdacs=4;
 int dacs[numdacs]={10,9,8,7};
 
 const int numadc_per_dac=16;
+const int total_chans=64;
 
 uint8_t chipSelect;
 uint8_t channel;
@@ -27,20 +23,13 @@ float voltages[numchan];
 bool goodtransfer=true;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial.println("Enter data in this style <SET chipSelect channel voltage>");
 
-  //delay(1000);
-  //Serial.println("Sleep command completed.");
-
-  pinMode(dac1, OUTPUT);
-  pinMode(dac2, OUTPUT);
-  pinMode(dac3, OUTPUT);
-  pinMode(dac4, OUTPUT);
-  digitalWrite(dac1, HIGH);
-  digitalWrite(dac2, HIGH);
-  digitalWrite(dac3, HIGH);
-  digitalWrite(dac4, HIGH);
+  for (int i=0;i<numdacs;i++) {
+    pinMode(dacs[i],OUTPUT); // set this arduino pin to output
+    digitalWrite(dacs[i],HIGH); // set CSbar=high i.e. not selected
+  }
 
   // assign other pins as outputs as well.
   // Can be useful if other pins are blown out.
@@ -57,29 +46,19 @@ void setup() {
   
   SPI.begin();
 
-  digitalWrite(dac1, LOW);
-  SPI.transfer16(0x00e0);
-  SPI.transfer16(0x0003);
-  digitalWrite(dac1, HIGH);
-
-  digitalWrite(dac2, LOW);
-  SPI.transfer16(0x00e0);
-  SPI.transfer16(0x0003);
-  digitalWrite(dac2, HIGH);
-
-  digitalWrite(dac3, LOW);
-  SPI.transfer16(0x00e0);
-  SPI.transfer16(0x0003);
-  digitalWrite(dac3, HIGH);
-
-  digitalWrite(dac4, LOW);
-  SPI.transfer16(0x00e0);
-  SPI.transfer16(0x0003);
-  digitalWrite(dac4, HIGH);
-
+  for (int i=0;i<numdacs;i++) {
+    set_span(dacs[i]); // set the software span for each DAC
+  }
+  
   reset_voltages();
 }
 
+void set_span(int dac) {  
+  digitalWrite(dac,LOW);
+  SPI.transfer16(0x00e0);  // command code: write span to all
+  SPI.transfer16(0x0003);  // span +/- 10 V
+  digitalWrite(dac,HIGH);
+}
 
 void reset_voltages () {
   for(int i;i<numchan;i++){
@@ -88,6 +67,8 @@ void reset_voltages () {
 }
 
 void loop() {
+  int cs;
+  int ch;
   int voltage_index;
   recvWithStartEndMarkers();
   if (newData == true) {
@@ -153,8 +134,44 @@ void loop() {
         }
       }
       Serial.println("Done zeroing.");
+    } else if (!strncmp(messageFromPC,"STC",3)) { // STC = set channel
+      Serial.print("Voltage ");
+      Serial.print(channelFromPC);
+      Serial.print(" set to ");
+      Serial.print(floatFromPC);
+      Serial.println(" V");
+      voltages[channelFromPC]=floatFromPC;
+    } else if (!strncmp(messageFromPC,"PRI",3)) { // PRI = print
+      for (int i=0;i<total_chans;i++) {
+        Serial.print(i);
+        Serial.print(" ");
+        Serial.print(voltages[i],10);
+        Serial.print(" ");
+        get_cs_ch(i,cs,ch);
+        Serial.print(cs);
+        Serial.print(" ");
+        Serial.print(ch);
+        Serial.println();
+      }
+    } else if (!strncmp(messageFromPC,"ONA",3)) { // ONA = on all
+      for (int i=0;i<total_chans;i++) {
+        get_cs_ch(i,cs,ch);
+        digitalWrite(cs, LOW);
+        SPI.transfer16(0x0030|(ch&0xF)); // & channel with 0xF so that only 0-15 can appear -- prevents erroneous commands being sent.
+        SPI.transfer16(dac_value(voltages[i]));
+        digitalWrite(cs, HIGH);
+      }
+      Serial.println("All channels on.");
+    } else if (!strncmp(messageFromPC,"OFA",3)) { // OFA = off all
+      for (int i=0;i<total_chans;i++) {
+        get_cs_ch(i,cs,ch);
+        digitalWrite(cs, LOW);
+        SPI.transfer16(0x0030|(ch&0xF)); // & channel with 0xF so that only 0-15 can appear -- prevents erroneous commands being sent.
+        SPI.transfer16(dac_value(0.));
+        digitalWrite(cs, HIGH);
+      }
+      Serial.println("All channels off.");
     }
-
     newData = false;
   }
 }
@@ -212,6 +229,11 @@ void parseData() {
     chipSelectFromPC = atoi(strtokIndx);
     strtokIndx = strtok(NULL, delimiter);
     channelFromPC = atoi(strtokIndx);
+  } else if (!strncmp(messageFromPC,"STC",3)) {
+    strtokIndx = strtok(NULL, delimiter);
+    channelFromPC = atoi(strtokIndx);
+    strtokIndx = strtok(NULL, delimiter);
+    floatFromPC = atof(strtokIndx);
   }
 }
 
@@ -230,4 +252,20 @@ uint16_t dac_value(float volts) {
   float minv = -10.0;
   float maxv = 10.0;
   return (uint16_t)((volts - minv) / (maxv - minv) * 65535);
+}
+
+void get_cs_ch(int i,int &cs,int &ch) {
+  if ((i>=0)&(i<=15)) {
+    cs=10;
+    ch=i;
+  } else if ((i>=16)&&(i<=31)) {
+    cs=9;
+    ch=i-16;
+  } else if ((i>=32)&&(i<=47)) {
+    cs=8;
+    ch=i-32;
+  } else if ((i>=48)&(i<=63)) {
+    cs=7;
+    ch=i-48;
+  }
 }
