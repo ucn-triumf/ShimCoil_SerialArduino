@@ -4,7 +4,6 @@ const int numdacs=4;
 int dacs[numdacs]={10,9,8,7};
 
 const int numadc_per_dac=16;
-const int total_chans=64;
 
 uint8_t chipSelect;
 uint8_t channel;
@@ -105,7 +104,7 @@ void loop() {
       Serial.print(floatFromPC,7);
       Serial.println(" V");
 
-      digitalWrite(chipSelect, LOW);
+      digitalWrite(chipSelect,LOW);
       SPI.transfer16(0x0030|(channel&0xF)); // & channel with 0xF so that only 0-15 can appear -- prevents erroneous commands being sent.
       SPI.transfer16(dac_value(floatFromPC));
       digitalWrite(chipSelect, HIGH);
@@ -134,18 +133,27 @@ void loop() {
         }
       }
       Serial.println("Done zeroing.");
-    } else if (!strncmp(messageFromPC,"STC",3)) { // STC = set channel
+    } else if (!strncmp(messageFromPC,"STV",3)) { // STV = set voltage number i
       Serial.print("Voltage ");
       Serial.print(channelFromPC);
       Serial.print(" set to ");
       Serial.print(floatFromPC);
       Serial.println(" V");
       voltages[channelFromPC]=floatFromPC;
+    } else if (!strncmp(messageFromPC,"STC",3)) { // STC = set current number i
+      Serial.print("Current ");
+      Serial.print(channelFromPC);
+      Serial.print(" set to ");
+      Serial.print(floatFromPC);
+      Serial.println(" A");
+      voltages[channelFromPC]=floatFromPC/0.04*10; // 0.04 Amperes = 10 Volts
     } else if (!strncmp(messageFromPC,"PRI",3)) { // PRI = print
-      for (int i=0;i<total_chans;i++) {
+      for (int i=0;i<numchan;i++) {
         Serial.print(i);
         Serial.print(" ");
-        Serial.print(voltages[i],10);
+        Serial.print(voltages[i],10); // print voltage
+        Serial.print(" ");
+        Serial.print(voltages[i]/10*0.04,10); // print current
         Serial.print(" ");
         get_cs_ch(i,cs,ch);
         Serial.print(cs);
@@ -154,26 +162,37 @@ void loop() {
         Serial.println();
       }
     } else if (!strncmp(messageFromPC,"ONA",3)) { // ONA = on all
-      for (int i=0;i<total_chans;i++) {
-        get_cs_ch(i,cs,ch);
-        digitalWrite(cs, LOW);
-        SPI.transfer16(0x0030|(ch&0xF)); // & channel with 0xF so that only 0-15 can appear -- prevents erroneous commands being sent.
-        SPI.transfer16(dac_value(voltages[i]));
-        digitalWrite(cs, HIGH);
+      for (int i=0;i<numchan;i++) {
+        on_voltage_i(i,voltages[i]);
       }
       Serial.println("All channels on.");
-    } else if (!strncmp(messageFromPC,"OFA",3)) { // OFA = off all
-      for (int i=0;i<total_chans;i++) {
-        get_cs_ch(i,cs,ch);
-        digitalWrite(cs, LOW);
-        SPI.transfer16(0x0030|(ch&0xF)); // & channel with 0xF so that only 0-15 can appear -- prevents erroneous commands being sent.
-        SPI.transfer16(dac_value(0.));
-        digitalWrite(cs, HIGH);
+    } else if (!strncmp(messageFromPC,"OFA",3)) { // OFA = off all (set everything to zero)
+      for (int i=0;i<numchan;i++) {
+        on_voltage_i(i,0);
       }
       Serial.println("All channels off.");
+    } else if (!strncmp(messageFromPC,"ONN",3)) { // ONN = on neg
+      for (int i=0;i<numchan;i++) {
+        on_voltage_i(i,-voltages[i]);
+      }
+      Serial.println("All channels set to negative.");
     }
     newData = false;
   }
+}
+
+void on_voltage_i(int i,float v) { // set voltage on channel i
+  int cs;
+  int ch;
+  get_cs_ch(i,cs,ch);
+  on_voltage_cs_ch(cs,ch,v);
+}
+
+void on_voltage_cs_ch(int cs,int ch,float v) { // set voltage on csbar cs, DAC channel ch
+  digitalWrite(cs,LOW);
+  SPI.transfer16(0x0030|(ch&0xF)); // & channel with 0xF so that only 0-15 can appear -- prevents erroneous commands being sent.
+  SPI.transfer16(dac_value(v));
+  digitalWrite(cs,HIGH);
 }
 
 void recvWithStartEndMarkers() {
@@ -229,7 +248,7 @@ void parseData() {
     chipSelectFromPC = atoi(strtokIndx);
     strtokIndx = strtok(NULL, delimiter);
     channelFromPC = atoi(strtokIndx);
-  } else if (!strncmp(messageFromPC,"STC",3)) {
+  } else if ((!strncmp(messageFromPC,"STV",3))||(!strncmp(messageFromPC,"STC",3))) {
     strtokIndx = strtok(NULL, delimiter);
     channelFromPC = atoi(strtokIndx);
     strtokIndx = strtok(NULL, delimiter);
