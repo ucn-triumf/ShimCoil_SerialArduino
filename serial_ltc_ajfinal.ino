@@ -1,4 +1,5 @@
 #include "SPI.h"
+#include "EEPROM.h"
 
 const int numdacs=4;
 int dacs[numdacs]={10,9,8,7};
@@ -18,13 +19,22 @@ float floatFromPC = 0.0;
 boolean newData = false;
 
 const int numchan=64;
-float voltages[numchan];
 bool goodtransfer=true;
+
+struct eep {
+  float voltage[numchan];
+  float slope[numchan];
+  float offset[numchan];
+};
+
+eep eep;
 
 void setup() {
   Serial.begin(115200);
   Serial.println("Enter data in this style <SET chipSelect channel voltage>");
-
+  if (sizeof(eep)>EEPROM.length()) {
+    Serial.println("Warning size of needed memory exceeds EEPROM");
+  }
   for (int i=0;i<numdacs;i++) {
     pinMode(dacs[i],OUTPUT); // set this arduino pin to output
     digitalWrite(dacs[i],HIGH); // set CSbar=high i.e. not selected
@@ -49,7 +59,7 @@ void setup() {
     set_span(dacs[i]); // set the software span for each DAC
   }
   
-  reset_voltages();
+  read_eep();
 }
 
 void set_span(int dac) {  
@@ -59,9 +69,19 @@ void set_span(int dac) {
   digitalWrite(dac,HIGH);
 }
 
-void reset_voltages () {
-  for(int i;i<numchan;i++){
-    voltages[i]=0.0;
+void read_eep () {
+  EEPROM.get(0,eep);
+}
+
+void write_eep () {
+  EEPROM.put(0,eep);
+}
+
+void reset_eep_default () {
+  for (int i=0;i<numchan;i++) {
+    eep.voltage[i]=0;
+    eep.slope[i]=0.04/10;
+    eep.offset[i]=0;
   }
 }
 
@@ -139,21 +159,25 @@ void loop() {
       Serial.print(" set to ");
       Serial.print(floatFromPC);
       Serial.println(" V");
-      voltages[channelFromPC]=floatFromPC;
+      eep.voltage[channelFromPC]=floatFromPC;
     } else if (!strncmp(messageFromPC,"STC",3)) { // STC = set current number i
       Serial.print("Current ");
       Serial.print(channelFromPC);
       Serial.print(" set to ");
       Serial.print(floatFromPC);
       Serial.println(" A");
-      voltages[channelFromPC]=floatFromPC/0.04*10; // 0.04 Amperes = 10 Volts
+      eep.voltage[channelFromPC]=(floatFromPC-eep.offset[channelFromPC])/eep.slope[channelFromPC]; // c=mV+b
     } else if (!strncmp(messageFromPC,"PRI",3)) { // PRI = print
       for (int i=0;i<numchan;i++) {
         Serial.print(i);
         Serial.print(" ");
-        Serial.print(voltages[i],10); // print voltage
+        Serial.print(eep.voltage[i],10); // print voltage
         Serial.print(" ");
-        Serial.print(voltages[i]/10*0.04,10); // print current
+        Serial.print(eep.slope[i]*eep.voltage[i]+eep.offset[i],10); // print current
+        Serial.print(" ");
+        Serial.print(eep.slope[i],10); // m from c=mV+b
+        Serial.print(" ");
+        Serial.print(eep.offset[i],10); // b from c=mV+b
         Serial.print(" ");
         get_cs_ch(i,cs,ch);
         Serial.print(cs);
@@ -163,7 +187,7 @@ void loop() {
       }
     } else if (!strncmp(messageFromPC,"ONA",3)) { // ONA = on all
       for (int i=0;i<numchan;i++) {
-        on_voltage_i(i,voltages[i]);
+        on_voltage_i(i,eep.voltage[i]);
       }
       Serial.println("All channels on.");
     } else if (!strncmp(messageFromPC,"OFA",3)) { // OFA = off all (set everything to zero)
@@ -173,9 +197,19 @@ void loop() {
       Serial.println("All channels off.");
     } else if (!strncmp(messageFromPC,"ONN",3)) { // ONN = on neg
       for (int i=0;i<numchan;i++) {
-        on_voltage_i(i,-voltages[i]);
+        on_voltage_i(i,-eep.voltage[i]);
       }
       Serial.println("All channels set to negative.");
+    } else if (!strncmp(messageFromPC,"RES",3)) { // RES = reset eeprom to default
+      reset_eep_default();
+      write_eep();
+      Serial.println("EEPROM reset to default values.");
+    } else if (!strncmp(messageFromPC,"REA",3)) { // REA = read from eeprom
+      read_eep();
+      Serial.println("read voltages and calibration constants from EEPROM.");
+    } else if (!strncmp(messageFromPC,"WRI",3)) { // WRI = write to eeprom
+      write_eep();
+      Serial.println("voltages and calibration constants written to EEPROM.");
     }
     newData = false;
   }
