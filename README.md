@@ -18,7 +18,7 @@ The following serial commands are implemented:
      Sets current i to c amperes in volatile memory.  c=m*V+b
 
 &lt;SSL i m&gt; "Set SLope"
-     Sets slope i to sl amperes/volt in volatile memory.  c=m*V+b
+     Sets slope i to m amperes/volt in volatile memory.  c=m*V+b
 
 &lt;SOF i b&gt; "Set OFfset"
      Sets offset i to b amperes in volatile memory. c=m*V+b
