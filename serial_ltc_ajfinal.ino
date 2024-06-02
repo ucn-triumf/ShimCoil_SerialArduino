@@ -19,9 +19,8 @@ float floatFromPC = 0.0;
 boolean newData = false;
 
 const int numchan=64;
-bool goodtransfer=true;
 
-struct eep {
+struct eep { // this structure is used for storing things in the EEPROM
   float voltage[numchan];
   float slope[numchan];
   float offset[numchan];
@@ -80,8 +79,8 @@ void write_eep () {
 void reset_eep_default () {
   for (int i=0;i<numchan;i++) {
     eep.voltage[i]=0;
-    eep.slope[i]=0.04/10;
-    eep.offset[i]=0;
+    eep.slope[i]=0.04/10;  // m=(0.04 amperes)/(10 volts)
+    eep.offset[i]=0;       // b=0 amperes, c=m*V+b
   }
 }
 
@@ -281,8 +280,6 @@ void parseData() {
 
   Serial.print("The message I received is ");
   Serial.println(messageFromPC);
-
-  goodtransfer=true;
 
   if (!strncmp(messageFromPC,"SET",3)) {
     strtokIndx = strtok(NULL, delimiter);
