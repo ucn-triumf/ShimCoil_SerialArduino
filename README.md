@@ -2,52 +2,52 @@
 
 The following serial commands are implemented:
 
-<SET cs ch v>
+&lt;SET cs ch v&gt;
      Sets channel ch on CSbar cs to v volts.
 
-<MUX cs ch>
+&lt;MUX cs ch&gt;
      Sets the MUX on CSbar cs to ch.
 
-<ZERO>
+&lt;ZERO&gt;
      Sets all 64 voltages to zero.
 
-"<STV i v>" "SeT Voltage"
+&lt;STV i v&gt; "SeT Voltage"
      Sets voltage i to v volts in volatile memory.
 
-<STC i c> "SeT Current"
+&lt;STC i c&gt; "SeT Current"
      Sets current i to c amperes in volatile memory.  c=m*V+b
 
-<SSL i m> "Set SLope"
+&lt;SSL i m&gt; "Set SLope"
      Sets slope i to sl amperes/volt in volatile memory.  c=m*V+b
 
-<SOF i b> "Set OFfset"
+&lt;SOF i b&gt; "Set OFfset"
      Sets offset i to b amperes in volatile memory. c=m*V+b
 
-<PRI> "PRInt"
+&lt;PRI&gt; "PRInt"
      Prints all the voltages, currents, and calibration constants in
      volatile memory.
 
-<ONA> "ON All"
+&lt;ONA&gt; "ON All"
      Turns on all currents to the values stored in volatile memory.
 
-<OFA> "OFf All"
+&lt;OFA&gt; "OFf All"
      Turns on all currents to zero, but does not delete the values stored
      in volatile memory.
 
-<ONN> "ON Negative"
+&lt;ONN&gt; "ON Negative"
      Turns on all currents to the negative of the values stored in
      volatile memory.
 
-<RES> "RESet"
+&lt;RES&gt; "RESet"
      Resets all voltages to zero, all calibration constants to default,
      and writes them all to the EEPROM.  Obviously this means that
      everything that was in the EEPROM is lost.
 
-<REA> "REAd eeprom"
+&lt;REA&gt; "REAd eeprom"
      Reads all voltages and calibration constants from EEPROM into
      volatile memory.
 
-<WRI> "WRIte eeprom"
+&lt;WRI&gt; "WRIte eeprom"
      Writes all voltages and calibration constants from volatile memory
      to EEPROM.  The values stored to EEPROM will automatically be read
      into volatile memory on next reboot or by connection made to arduino
