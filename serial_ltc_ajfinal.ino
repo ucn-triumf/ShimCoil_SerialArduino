@@ -167,6 +167,20 @@ void loop() {
       Serial.print(floatFromPC);
       Serial.println(" A");
       eep.voltage[channelFromPC]=(floatFromPC-eep.offset[channelFromPC])/eep.slope[channelFromPC]; // c=mV+b
+    } else if (!strncmp(messageFromPC,"SSL",3)) { // SSL = set slope number i
+      Serial.print("Slope ");
+      Serial.print(channelFromPC);
+      Serial.print(" set to ");
+      Serial.print(floatFromPC,6);
+      Serial.println(" A/V");
+      eep.slope[channelFromPC]=floatFromPC; // the m in c=mV+b
+    } else if (!strncmp(messageFromPC,"SOF",3)) { // SOF = set offset number i
+      Serial.print("Offset ");
+      Serial.print(channelFromPC);
+      Serial.print(" set to ");
+      Serial.print(floatFromPC,6);
+      Serial.println(" A");
+      eep.offset[channelFromPC]=floatFromPC; // c=mV+b
     } else if (!strncmp(messageFromPC,"PRI",3)) { // PRI = print
       for (int i=0;i<numchan;i++) {
         Serial.print(i);
@@ -282,7 +296,10 @@ void parseData() {
     chipSelectFromPC = atoi(strtokIndx);
     strtokIndx = strtok(NULL, delimiter);
     channelFromPC = atoi(strtokIndx);
-  } else if ((!strncmp(messageFromPC,"STV",3))||(!strncmp(messageFromPC,"STC",3))) {
+  } else if ((!strncmp(messageFromPC,"STV",3))
+            ||(!strncmp(messageFromPC,"STC",3))
+            ||(!strncmp(messageFromPC,"SSL",3))
+            ||(!strncmp(messageFromPC,"SOF",3))) {
     strtokIndx = strtok(NULL, delimiter);
     channelFromPC = atoi(strtokIndx);
     strtokIndx = strtok(NULL, delimiter);

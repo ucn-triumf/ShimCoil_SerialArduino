@@ -11,11 +11,17 @@ The following serial commands are implemented:
 <ZERO>
      Sets all 64 voltages to zero.
 
-<STV i v> "SeT Voltage"
+"<STV i v>" "SeT Voltage"
      Sets voltage i to v volts in volatile memory.
 
 <STC i c> "SeT Current"
-     Sets current i to c amperes in volatile memory.
+     Sets current i to c amperes in volatile memory.  c=m*V+b
+
+<SSL i m> "Set SLope"
+     Sets slope i to sl amperes/volt in volatile memory.  c=m*V+b
+
+<SOF i b> "Set OFfset"
+     Sets offset i to b amperes in volatile memory. c=m*V+b
 
 <PRI> "PRInt"
      Prints all the voltages, currents, and calibration constants in
