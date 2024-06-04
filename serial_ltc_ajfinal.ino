@@ -114,29 +114,40 @@ void loop() {
     if (!strncmp(messageFromPC, "SET", 3)) {
       chipSelect = chipSelectFromPC;
       channel = channelFromPC;
-
       Serial.print("Setting CSbar ");
       Serial.print(chipSelect);
       Serial.print(" channel ");
       Serial.print(channel);
       Serial.print(" to ");
-      Serial.print(floatFromPC,7);
+      Serial.print(floatFromPC,6);
       Serial.println(" V");
-
-      digitalWrite(chipSelect,LOW);
-      SPI.transfer16(0x0030|(channel&0xF)); // & channel with 0xF so that only 0-15 can appear -- prevents erroneous commands being sent.
-      SPI.transfer16(dac_value(floatFromPC));
-      digitalWrite(chipSelect, HIGH);
+      on_voltage_cs_ch(chipSelect,channel,floatFromPC);
+    } else if (!strncmp(messageFromPC,"SVN",3)) { // set voltage now -- immediately turns on voltage on that channel without adjusting eep
+      Serial.print("Immediately setting voltage ");
+      Serial.print(channelFromPC);
+      Serial.print(" to ");
+      Serial.print(floatFromPC,6);
+      Serial.println(" V");
+      on_voltage_i(channelFromPC,floatFromPC);
     } else if (!strncmp(messageFromPC, "MUX", 3)) {
-      Serial.println("Changing MUX");
+      Serial.print("Changing MUX ");
+      Serial.print(chipSelectFromPC);
+      Serial.print(" to ");
+      Serial.println(channelFromPC);
       chipSelect = chipSelectFromPC;
       channel = channelFromPC;
-
       digitalWrite(chipSelect, LOW);
       SPI.transfer16(0x00b0);
       SPI.transfer16(0x0010 | channel);
       digitalWrite(chipSelect, HIGH);
-
+    } else if (!strncmp(messageFromPC, "PDO", 3)) { // power down chipselect cs
+      Serial.print("Powering down ");
+      Serial.println(chipSelectFromPC);
+      chipSelect=chipSelectFromPC;
+      digitalWrite(chipSelect,LOW);
+      SPI.transfer16(0x0050);
+      SPI.transfer16(0x0000);
+      digitalWrite(chipSelect,HIGH);
     } else if (!strncmp(messageFromPC,"ZERO",4)) {
       Serial.println("Zeroing all channels");
       for (int i=0;i<numdacs;i++) {
@@ -296,11 +307,15 @@ void parseData() {
   } else if ((!strncmp(messageFromPC,"STV",3))
             ||(!strncmp(messageFromPC,"STC",3))
             ||(!strncmp(messageFromPC,"SSL",3))
+            ||(!strncmp(messageFromPC,"SVN",3))
             ||(!strncmp(messageFromPC,"SOF",3))) {
     strtokIndx = strtok(NULL, delimiter);
     channelFromPC = atoi(strtokIndx);
     strtokIndx = strtok(NULL, delimiter);
     floatFromPC = atof(strtokIndx);
+  } else if (!strncmp(messageFromPC,"PDO",3)) {
+    strtokIndx = strtok(NULL, delimiter);
+    chipSelectFromPC = atoi(strtokIndx);
   }
 }
 
