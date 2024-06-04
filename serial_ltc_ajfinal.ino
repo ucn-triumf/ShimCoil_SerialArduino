@@ -129,7 +129,7 @@ void loop() {
       Serial.print(floatFromPC,6);
       Serial.println(" V");
       on_voltage_i(channelFromPC,floatFromPC);
-    } else if (!strncmp(messageFromPC, "MUX", 3)) {
+    } else if (!strncmp(messageFromPC,"MUX",3)) {
       Serial.print("Changing MUX ");
       Serial.print(chipSelectFromPC);
       Serial.print(" to ");
@@ -138,9 +138,9 @@ void loop() {
       channel = channelFromPC;
       digitalWrite(chipSelect, LOW);
       SPI.transfer16(0x00b0);
-      SPI.transfer16(0x0010 | channel);
+      SPI.transfer16(0x0010|channel);
       digitalWrite(chipSelect, HIGH);
-    } else if (!strncmp(messageFromPC, "PDO", 3)) { // power down chipselect cs
+    } else if (!strncmp(messageFromPC,"PDO",3)) { // power down chipselect cs
       Serial.print("Powering down ");
       Serial.println(chipSelectFromPC);
       chipSelect=chipSelectFromPC;
@@ -157,7 +157,7 @@ void loop() {
           Serial.print(" channel ");
           Serial.println(c);
           digitalWrite(dacs[i],LOW);
-          SPI.transfer16(0x0030|(c & 0xF));
+          SPI.transfer16(0x0030|(c&0xF));
           SPI.transfer16(dac_value(0.));
           digitalWrite(chipSelect, HIGH);
         }

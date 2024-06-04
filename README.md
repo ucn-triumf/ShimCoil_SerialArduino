@@ -5,8 +5,15 @@ The following serial commands are implemented:
 &lt;SET cs ch v&gt;
      Sets channel ch on CSbar cs to v volts.
 
+&lt;SVN i v&gt;
+     Sets voltage i to v volts, immediately turns on only that channel.
+     Does not update the voltage in volatile memory.
+
 &lt;MUX cs ch&gt;
      Sets the MUX on CSbar cs to ch.
+
+&lt;PDO cs&gt;
+     Powers down all channels on CSbar cs.
 
 &lt;ZERO&gt;
      Sets all 64 voltages to zero.
