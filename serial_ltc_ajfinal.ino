@@ -156,14 +156,14 @@ void loop() {
       Serial.print("Voltage ");
       Serial.print(channelFromPC);
       Serial.print(" set to ");
-      Serial.print(floatFromPC);
+      Serial.print(floatFromPC,6);
       Serial.println(" V");
       eep.voltage[channelFromPC]=floatFromPC;
     } else if (!strncmp(messageFromPC,"STC",3)) { // STC = set current number i
       Serial.print("Current ");
       Serial.print(channelFromPC);
       Serial.print(" set to ");
-      Serial.print(floatFromPC);
+      Serial.print(floatFromPC,6);
       Serial.println(" A");
       eep.voltage[channelFromPC]=(floatFromPC-eep.offset[channelFromPC])/eep.slope[channelFromPC]; // c=mV+b
     } else if (!strncmp(messageFromPC,"SSL",3)) { // SSL = set slope number i
