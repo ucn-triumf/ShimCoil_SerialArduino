@@ -333,7 +333,7 @@ void showParsedData() {
 uint16_t dac_value(float volts) {
   float minv = -10.0;
   float maxv = 10.0;
-  return (uint16_t)((volts - minv) / (maxv - minv) * 65535);
+  return (uint16_t)((volts-minv)/(maxv-minv)*65535);
 }
 
 void get_cs_ch(int i,int &cs,int &ch) {
