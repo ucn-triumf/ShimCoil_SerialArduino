@@ -9,14 +9,14 @@ const int numadc_per_dac=16;
 uint8_t chipSelect;
 uint8_t channel;
 
-const byte numChars = 128;
+const byte numChars=60;
 char receivedChars[numChars];
 char tempChars[numChars];
-char messageFromPC[numChars] = {0};
-int channelFromPC = 0;
-int chipSelectFromPC = 0;
-float floatFromPC = 0.0;
-boolean newData = false;
+char messageFromPC[numChars]={0};
+int channelFromPC=0;
+int chipSelectFromPC=0;
+float floatFromPC=0.0;
+boolean newData=false;
 
 const int numchan=64;
 
@@ -112,8 +112,8 @@ void loop() {
 
    
     if (!strncmp(messageFromPC, "SET", 3)) {
-      chipSelect = chipSelectFromPC;
-      channel = channelFromPC;
+      chipSelect=chipSelectFromPC;
+      channel=channelFromPC;
       Serial.print("Setting CSbar ");
       Serial.print(chipSelect);
       Serial.print(" channel ");
@@ -144,10 +144,7 @@ void loop() {
       Serial.print("Powering down ");
       Serial.println(chipSelectFromPC);
       chipSelect=chipSelectFromPC;
-      digitalWrite(chipSelect,LOW);
-      SPI.transfer16(0x0050);
-      SPI.transfer16(0x0000);
-      digitalWrite(chipSelect,HIGH);
+      power_down(chipSelect);
     } else if (!strncmp(messageFromPC,"ZERO",4)) {
       Serial.println("Zeroing all channels");
       for (int i=0;i<numdacs;i++) {
@@ -239,6 +236,17 @@ void loop() {
   }
 }
 
+void power_down(int cs) { // power down the DAC chip connected to CSbar cs
+  digitalWrite(cs,LOW);
+  SPI.transfer16(0x0050); // power down all channels
+  SPI.transfer16(0x0000);
+  digitalWrite(cs,HIGH);  
+}
+
+void power_down_all() {
+  for (int i=0;i<numdacs;i++) power_down(dacs[i]);
+}
+
 void on_voltage_i(int i,float v) { // set voltage on channel i
   int cs;
   int ch;
@@ -292,31 +300,31 @@ void parseData() {
   Serial.print("The message I received is ");
   Serial.println(messageFromPC);
 
-  if (!strncmp(messageFromPC,"SET",3)) {
-    strtokIndx = strtok(NULL, delimiter);
-    chipSelectFromPC = atoi(strtokIndx);
-    strtokIndx = strtok(NULL, delimiter);
-    channelFromPC = atoi(strtokIndx);
-    strtokIndx = strtok(NULL, delimiter);
-    floatFromPC = atof(strtokIndx);
-  } else if (!strncmp(messageFromPC, "MUX", 3)) {
-    strtokIndx = strtok(NULL, delimiter);
-    chipSelectFromPC = atoi(strtokIndx);
-    strtokIndx = strtok(NULL, delimiter);
-    channelFromPC = atoi(strtokIndx);
+  if (!strncmp(messageFromPC,"SET",3)) { // for a SET command, we expect a CSbar, a channel, and a voltage
+    strtokIndx=strtok(NULL, delimiter);
+    chipSelectFromPC=atoi(strtokIndx);
+    strtokIndx=strtok(NULL, delimiter);
+    channelFromPC=atoi(strtokIndx);
+    strtokIndx=strtok(NULL, delimiter);
+    floatFromPC=atof(strtokIndx);
+  } else if (!strncmp(messageFromPC, "MUX", 3)) { // for a MUX command, we expect a CSbar and a channel
+    strtokIndx=strtok(NULL, delimiter);
+    chipSelectFromPC=atoi(strtokIndx);
+    strtokIndx=strtok(NULL, delimiter);
+    channelFromPC=atoi(strtokIndx);
   } else if ((!strncmp(messageFromPC,"STV",3))
             ||(!strncmp(messageFromPC,"STC",3))
             ||(!strncmp(messageFromPC,"SSL",3))
             ||(!strncmp(messageFromPC,"SVN",3))
-            ||(!strncmp(messageFromPC,"SOF",3))) {
+            ||(!strncmp(messageFromPC,"SOF",3))) { // for these, we expect to get which voltage to set (i) and a voltage
     strtokIndx = strtok(NULL, delimiter);
     channelFromPC = atoi(strtokIndx);
     strtokIndx = strtok(NULL, delimiter);
     floatFromPC = atof(strtokIndx);
-  } else if (!strncmp(messageFromPC,"PDO",3)) {
+  } else if (!strncmp(messageFromPC,"PDO",3)) { // for PDO, we expect a CSbar
     strtokIndx = strtok(NULL, delimiter);
     chipSelectFromPC = atoi(strtokIndx);
-  }
+  } // for any other command, we don't expect anything, just the command itself
 }
 
 void showParsedData() {
