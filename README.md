@@ -2,7 +2,7 @@
 
 This repository formally known as `serial_ltc_ajfinal` and was imported from [J. Martin's repository](https://github.com/jmartin1454/serial_ltc_ajfinal).
 
-This code is to be uploaded to the arduino controlling the shim coil power supplies. It allows the arduino to receive serial commands from a USB connection to set currents in the various channels. 
+This code is to be uploaded to the arduino controlling the shim coil power supplies. It allows the arduino to receive serial commands from a USB connection to set currents in the various channels. These command may be issued from the scripts found [here](https://github.com/ucn-triumf/current_control).
 
 ## Serial Command List
 
