@@ -2,13 +2,14 @@
 #include "EEPROM.h"
 
 // convert from index to chip select and channel number
-const int numdacs=4;
-int dacs[numdacs]={10, 9, 8, 7};
-const int numadc_per_dac=16;
+const int numdacs=4;              // number of chips
+int dacs[numdacs]={10, 9, 8, 7};  // chip select indexes
+const int numadc_per_dac=16;      // output terminal indexes
 
 uint8_t chipSelect;
 uint8_t channel;
 
+// variables for parsing serial commands
 const byte numChars=60;
 char receivedChars[numChars];
 char tempChars[numChars];
@@ -29,6 +30,9 @@ struct eep {
 
 eep eep;
 
+/// UTILITIES ===============================================================
+
+// setup
 void setup() {
   Serial.begin(115200);
   Serial.println("Enter data in this style <SET chipSelect channel voltage>");
@@ -57,70 +61,23 @@ void setup() {
 
   // set the software span for each DAC
   for (int i=0;i<numdacs;i++) {
-    set_span(dacs[i]);
+    digitalWrite(dacs[i], LOW);
+    SPI.transfer16(0x00e0);  // command code: write span to all
+    SPI.transfer16(0x0003);  // span +/- 10 V
+    digitalWrite(dacs[i], HIGH);
   }
 
   read_eep();
 }
 
-// set voltage range for the dac to span
-void set_span(int dac) {
-  digitalWrite(dac, LOW);
-  SPI.transfer16(0x00e0);  // command code: write span to all
-  SPI.transfer16(0x0003);  // span +/- 10 V
-  digitalWrite(dac, HIGH);
+// get the dac setpoint int, converted from volts
+uint16_t dac_value(float volts) {
+  float minv = -10.0;
+  float maxv = 10.0;
+  return (uint16_t)((volts-minv)/(maxv-minv)*65535);
 }
 
-// read onboard storage
-void read_eep () {
-  EEPROM.get(0, eep);
-}
-
-// write onboard storage
-void write_eep () {
-  EEPROM.put(0, eep);
-}
-
-// reset onboard storage to defaults
-void reset_eep_default () {
-  for (int i=0;i<numchan;i++) {
-    eep.voltage[i]=0;
-    eep.slope[i]=0.04/10;  // m=(0.04 amperes)/(10 volts)
-    eep.offset[i]=0;       // b=0 amperes, c=m*V+b
-  }
-}
-
-// power down the DAC chip connected to CSbar cs
-void power_down(int cs) {
-  digitalWrite(cs, LOW);
-  SPI.transfer16(0x0050); // power down all channels
-  SPI.transfer16(0x0000);
-  digitalWrite(cs, HIGH);
-}
-
-// power down all chips
-void power_down_all() {
-  for (int i=0;i<numdacs;i++)
-    power_down(dacs[i]);
-}
-
-// set voltage on channel i
-void on_voltage_i(int i, float v) {
-  int cs;
-  int ch;
-  get_cs_ch(i, cs, ch);
-  on_voltage_cs_ch(cs, ch, v);
-}
-
-// set voltage on csbar cs, DAC channel ch
-void on_voltage_cs_ch(int cs, int ch, float v) {
-  digitalWrite(cs, LOW);
-  SPI.transfer16(0x0030|(ch&0xF)); // & channel with 0xF so that only 0-15 can appear -- prevents erroneous commands being sent.
-  SPI.transfer16(dac_value(v));
-  digitalWrite(cs, HIGH);
-}
-
-// something to do with the serial communication, deliminate start and end of commands
+// receive messages from arduino
 void recvWithStartEndMarkers() {
   static boolean recvInProgress = false;
   static byte ndx = 0;
@@ -150,7 +107,8 @@ void recvWithStartEndMarkers() {
   }
 }
 
-// parse data from arduino chip into global variables
+// parse messages from serial communication into global variables. These are then
+// passed to the run loop for the board to execute
 void parseData() {
   char *strtokIndx;
   char delimiter[4] = ", ";
@@ -200,7 +158,7 @@ void parseData() {
   // for any other command, we don't expect anything, just the command itself
 }
 
-// print parsed data
+// print parsed data (debugging only)
 void showParsedData() {
   Serial.print("Message ");
   Serial.println(messageFromPC);
@@ -212,12 +170,52 @@ void showParsedData() {
   Serial.println(floatFromPC);
 }
 
-// get the dac setpoint value, converted from volts to int
-uint16_t dac_value(float volts) {
-  float minv = -10.0;
-  float maxv = 10.0;
-  return (uint16_t)((volts-minv)/(maxv-minv)*65535);
+/// FUNCTIONS FOR BASE OPERATION =============================================
+
+/// power down the DAC chip connected to CSbar cs
+void power_down(int cs) {
+  digitalWrite(cs, LOW);
+  SPI.transfer16(0x0050); // power down all channels
+  SPI.transfer16(0x0000);
+  digitalWrite(cs, HIGH);
 }
+
+// power down all chips
+void power_down_all() {
+  for (int i=0;i<numdacs;i++)
+    power_down(dacs[i]);
+}
+
+// set voltage on csbar cs, DAC channel ch, and turn on that channel
+void on_voltage_cs_ch(int cs, int ch, float v) {
+  digitalWrite(cs, LOW);
+  SPI.transfer16(0x0030|(ch&0xF)); // & channel with 0xF so that only 0-15 can appear -- prevents erroneous commands being sent.
+  SPI.transfer16(dac_value(v));
+  digitalWrite(cs, HIGH);
+}
+
+/// FUNCTIONS FOR EEPROM OPERATION ===========================================
+
+// read onboard storage
+void read_eep () {
+  EEPROM.get(0, eep);
+}
+
+// reset onboard storage to defaults
+void reset_eep_default () {
+  for (int i=0;i<numchan;i++) {
+    eep.voltage[i]=0;
+    eep.slope[i]=0.04/10;  // m=(0.04 amperes)/(10 volts)
+    eep.offset[i]=0;       // b=0 amperes, c=m*V+b
+  }
+}
+
+// write onboard storage
+void write_eep () {
+  EEPROM.put(0, eep);
+}
+
+/// FUNCTIONS FOR 0-63 CHANNEL OPERATION =====================================
 
 // convert from index to chip select and channel
 void get_cs_ch(int i, int &cs, int &ch) {
@@ -236,7 +234,16 @@ void get_cs_ch(int i, int &cs, int &ch) {
   }
 }
 
-// run loop for interpreting commands
+// set voltage on channel i
+void on_voltage_i(int i, float v) {
+  int cs;
+  int ch;
+  get_cs_ch(i, cs, ch);
+  on_voltage_cs_ch(cs, ch, v);
+}
+
+
+/// MAIN RUN LOOP ============================================================
 void loop() {
   int cs;
   int ch;
@@ -261,7 +268,8 @@ void loop() {
     // - parseData() gets the relevant data that is needed
     // - loop() actually issues the commands to the arduino/DAC chip
 
-    if (!strncmp(messageFromPC, "SET", 3)) {
+    // Low level commands
+    if (!strncmp(messageFromPC, "SET", 3)) {        // base level set voltage
       chipSelect=chipSelectFromPC;
       channel=channelFromPC;
       Serial.print("Setting CSbar ");
@@ -272,14 +280,7 @@ void loop() {
       Serial.print(floatFromPC, 6);
       Serial.println(" V");
       on_voltage_cs_ch(chipSelect, channel, floatFromPC);
-    } else if (!strncmp(messageFromPC, "SVN", 3)) { // set voltage now -- immediately turns on voltage on that channel without adjusting eep
-      Serial.print("Immediately setting voltage ");
-      Serial.print(channelFromPC);
-      Serial.print(" to ");
-      Serial.print(floatFromPC, 6);
-      Serial.println(" V");
-      on_voltage_i(channelFromPC, floatFromPC);
-    } else if (!strncmp(messageFromPC, "MUX", 3)) {
+    } else if (!strncmp(messageFromPC, "MUX", 3)) { // change the chipselect board to mux
       Serial.print("Changing MUX ");
       Serial.print(chipSelectFromPC);
       Serial.print(" to ");
@@ -297,7 +298,7 @@ void loop() {
       Serial.println(".");
       chipSelect=chipSelectFromPC;
       power_down(chipSelect);
-    } else if (!strncmp(messageFromPC, "ZERO", 4)) {
+    } else if (!strncmp(messageFromPC, "ZERO", 4)){ // zero all channels
       Serial.println("Zeroing all channels");
       for (int i=0;i<numdacs;i++) {
         for (int c=0;c<numadc_per_dac;c++) {
@@ -312,6 +313,49 @@ void loop() {
         }
       }
       Serial.println("Done zeroing.");
+    }
+
+    // commands for 64-channel indexing
+      else if (!strncmp(messageFromPC, "ONA", 3)) { // ONA = on all
+      for (int i=0;i<numchan;i++) {
+        on_voltage_i(i, eep.voltage[i]);
+      }
+      Serial.println("All channels on.");
+    } else if (!strncmp(messageFromPC, "OFA", 3)) { // OFA = off all (set everything to zero)
+      for (int i=0;i<numchan;i++) {
+        on_voltage_i(i, 0);
+      }
+      Serial.println("All channels off.");
+    } else if (!strncmp(messageFromPC, "ONN", 3)) { // ONN = on neg
+      for (int i=0;i<numchan;i++) {
+        on_voltage_i(i, -eep.voltage[i]);
+      }
+      Serial.println("All channels set to negative.");
+    } else if (!strncmp(messageFromPC, "PRI", 3)) { // PRI = print
+      for (int i=0;i<numchan;i++) {
+        Serial.print(i);
+        Serial.print(" ");
+        Serial.print(eep.voltage[i], 10); // print voltage
+        Serial.print(" ");
+        Serial.print(eep.slope[i]*eep.voltage[i]+eep.offset[i], 10); // print current
+        Serial.print(" ");
+        Serial.print(eep.slope[i], 10); // m from c=mV+b
+        Serial.print(" ");
+        Serial.print(eep.offset[i], 10); // b from c=mV+b
+        Serial.print(" ");
+        get_cs_ch(i, cs, ch);
+        Serial.print(cs);
+        Serial.print(" ");
+        Serial.print(ch);
+        Serial.println(".");
+      }
+    } else if (!strncmp(messageFromPC, "SVN", 3)) { // set voltage now -- immediately turns on voltage on that channel without adjusting eep
+      Serial.print("Immediately setting voltage ");
+      Serial.print(channelFromPC);
+      Serial.print(" to ");
+      Serial.print(floatFromPC, 6);
+      Serial.println(" V");
+      on_voltage_i(channelFromPC, floatFromPC);
     } else if (!strncmp(messageFromPC, "STV", 3)) { // STV = set voltage number i
       Serial.print("Voltage ");
       Serial.print(channelFromPC);
@@ -340,40 +384,10 @@ void loop() {
       Serial.print(floatFromPC, 6);
       Serial.println(" A");
       eep.offset[channelFromPC]=floatFromPC; // c=mV+b
-    } else if (!strncmp(messageFromPC, "PRI", 3)) { // PRI = print
-      for (int i=0;i<numchan;i++) {
-        Serial.print(i);
-        Serial.print(" ");
-        Serial.print(eep.voltage[i], 10); // print voltage
-        Serial.print(" ");
-        Serial.print(eep.slope[i]*eep.voltage[i]+eep.offset[i], 10); // print current
-        Serial.print(" ");
-        Serial.print(eep.slope[i], 10); // m from c=mV+b
-        Serial.print(" ");
-        Serial.print(eep.offset[i], 10); // b from c=mV+b
-        Serial.print(" ");
-        get_cs_ch(i, cs, ch);
-        Serial.print(cs);
-        Serial.print(" ");
-        Serial.print(ch);
-        Serial.println(".");
-      }
-    } else if (!strncmp(messageFromPC, "ONA", 3)) { // ONA = on all
-      for (int i=0;i<numchan;i++) {
-        on_voltage_i(i, eep.voltage[i]);
-      }
-      Serial.println("All channels on.");
-    } else if (!strncmp(messageFromPC, "OFA", 3)) { // OFA = off all (set everything to zero)
-      for (int i=0;i<numchan;i++) {
-        on_voltage_i(i, 0);
-      }
-      Serial.println("All channels off.");
-    } else if (!strncmp(messageFromPC, "ONN", 3)) { // ONN = on neg
-      for (int i=0;i<numchan;i++) {
-        on_voltage_i(i, -eep.voltage[i]);
-      }
-      Serial.println("All channels set to negative.");
-    } else if (!strncmp(messageFromPC, "RES", 3)) { // RES = reset eeprom to default
+    }
+
+    // EEPROM commands
+      else if (!strncmp(messageFromPC, "RES", 3)) { // RES = reset eeprom to default
       reset_eep_default();
       write_eep();
       Serial.println("EEPROM reset to default values.");
@@ -384,6 +398,8 @@ void loop() {
       write_eep();
       Serial.println("voltages and calibration constants written to EEPROM.");
     }
+
+    // ensure new data is taken
     newData = false;
   }
 }
