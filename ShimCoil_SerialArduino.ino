@@ -116,8 +116,9 @@ void parseData() {
   strtokIndx = strtok(tempChars, delimiter);
   strcpy(messageFromPC, strtokIndx);
 
-  Serial.print("The message I received is ");
-  Serial.println(messageFromPC);
+  Serial.print("The message I received is '");
+  Serial.print(messageFromPC);
+  Serial.println("'");
 
   // for a SET command, we expect a CSbar, a channel, and a voltage
   if (!strncmp(messageFromPC, "SET", 3)) {
@@ -335,22 +336,23 @@ void loop() {
       Serial.println("All channels set to negative.");
     } else if (!strncmp(messageFromPC, "PRI", 3)) { // PRI = print
       for (int i=0;i<numchan;i++) {
+        Serial.print("\nINDEX ");
         Serial.print(i);
-        Serial.print(" ");
+        Serial.print("\n\tVoltage: ");
         Serial.print(eep.voltage[i], 10); // print voltage
-        Serial.print(" ");
+        Serial.print(" V\n\tCurrent: ");
         Serial.print(eep.slope[i]*eep.voltage[i]+eep.offset[i], 10); // print current
-        Serial.print(" ");
+        Serial.print(" A\n\tSlope:   ");
         Serial.print(eep.slope[i], 10); // m from c=mV+b
-        Serial.print(" ");
+        Serial.print(" A/V\n\tOffset:  ");
         Serial.print(eep.offset[i], 10); // b from c=mV+b
-        Serial.print(" ");
+        Serial.print(" A\n\tChipSel: ");
         get_cs_ch(i, cs, ch);
         Serial.print(cs);
-        Serial.print(" ");
-        Serial.print(ch);
-        Serial.println(".");
+        Serial.print("\n\tChannel: ");
+        Serial.println(ch);
       }
+      Serial.println(".");
     } else if (!strncmp(messageFromPC, "SVN", 3)) { // set voltage now -- immediately turns on voltage on that channel without adjusting eep
       Serial.print("Immediately setting voltage ");
       Serial.print(channelFromPC);
