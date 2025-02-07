@@ -188,6 +188,8 @@ void power_down_all() {
 
 // set voltage on csbar cs, DAC channel ch, and turn on that channel
 void on_voltage_cs_ch(int cs, int ch, float v) {
+
+  // write
   digitalWrite(cs, LOW);
   SPI.transfer16(0x0030|(ch&0xF)); // & channel with 0xF so that only 0-15 can appear -- prevents erroneous commands being sent.
   SPI.transfer16(dac_value(v));
