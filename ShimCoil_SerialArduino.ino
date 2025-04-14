@@ -33,9 +33,9 @@ eep eep;
 // setup
 void setup() {
     Serial.begin(115200);
-    Serial.println("Enter data in this style <SET chipSelect channel voltage>");
+    // Serial.println("Enter data in this style <SET chipSelect channel voltage>#");
     if (sizeof(eep)>EEPROM.length()) {
-        Serial.println("Warning size of needed memory exceeds EEPROM");
+        Serial.println("Warning size of needed memory exceeds EEPROM#");
     }
     for (int i=0;i<NDAC;i++) {
         pinMode(CS_IDX2ID[i], OUTPUT); // set this arduino pin to output
@@ -64,6 +64,7 @@ void setup() {
         SPI.transfer16(0x0003);  // span +/- 10 V
         digitalWrite(CS_IDX2ID[i], HIGH);
     }
+    Serial.println("Setup complete#");
 }
 
 // get the dac setpoint int, converted from volts
@@ -233,21 +234,19 @@ void cmd_PWR(){
 
 // zero all values, don't change eep
 void cmd_ZERO(){
-    Serial.println("Zeroing all channels");
     for (int i=0;i<NDAC;i++) {
         for (int c=0;c<NADC_PER_DAC;c++) {
         Serial.print("Zeroing CSbar ");
         Serial.print(CS_IDX2ID[i]);
         Serial.print(" channel ");
-        Serial.print(c);
-        Serial.print("#");
+        Serial.println(c);
         digitalWrite(CS_IDX2ID[i], LOW);
         SPI.transfer16(0x0030|(c&0xF));
         SPI.transfer16(volt2dac(0.));
         digitalWrite(chipSelect, HIGH);
         }
     }
-    Serial.println("Done zeroing.");
+    Serial.println("All channels zeroed#");
 }
 
 // reset onboard storage to defaults
