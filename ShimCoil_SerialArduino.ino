@@ -257,7 +257,7 @@ void cmd_ERST(){
         eep.voltage[i][j]=0;
         }
     }
-    write_eep();
+    cmd_EWR();
     Serial.println("EEPROM reset to default values#");
 }
 
@@ -300,7 +300,7 @@ void cmd_ESTA(){
     Serial.println("Setting all voltages to eep saved values#");
     for(int i=0; i<NDAC; i++){
         for(int ch=0; ch<NADC_PER_DAC; ch++){
-            set_voltage(CS_IDX2ID[i], ch, eep[i][ch], false);
+            set_voltage(CS_IDX2ID[i], ch, eep.voltage[i][ch], false);
         }
     }
 }
@@ -310,7 +310,7 @@ void cmd_ENEG(){
     Serial.println("Setting all voltages to negative of eep saved values#");
     for(int i=0; i<NDAC; i++){
         for(int ch=0; ch<NADC_PER_DAC; ch++){
-            set_voltage(CS_IDX2ID[i], ch, -1*eep[i][ch], true);
+            set_voltage(CS_IDX2ID[i], ch, -1*eep.voltage[i][ch], true);
         }
     }
 }
